@@ -1,46 +1,38 @@
-
-name: Sync GitHub to AWS CodeCommit
+name: Sync to CodeCommit
 
 on:
   push:
-    branches:
-      - main
-
-permissions:
-  contents: read
-  id-token: write
+    branches: [ "**" ] # すべてのブランチのプッシュをトリガーにするで
+  workflow_dispatch:
 
 jobs:
   sync:
     runs-on: ubuntu-latest
-
     steps:
-      # 1. GitHubのリポジトリを取得
-      - name: Checkout GitHub repository
-        uses: actions/checkout@v6
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0 # 全履歴と全ブランチを取得するために必須やで！
 
-      # 2. AWSのIAMロールを引き受ける
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v6.3.0
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::679353609733:role/GitHubActionsCodeCommitSyncRole
-          aws-region: ap-northeast-1
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }} # Variablesからリージョンを取得！
 
-      # 3. AWSの認証情報を使ってCodeCommitへ接続
-      - name: Configure Git for CodeCommit
+      - name: Git Setup & Push to CodeCommit
         run: |
+          # CodeCommit用のgitヘルパーを入れる超便利ツール
+          pip install git-remote-codecommit
+
+          # リモートリポジトリを追加（VariablesからURLを取得！）
+          git remote add codecommit ${{ vars.CODECOMMIT_REPO_URL }}
+          
+          # 認証情報のセットアップ
           git config --global credential.helper '!aws codecommit credential-helper $@'
           git config --global credential.UseHttpPath true
 
-      # 4. CodeCommitをリモートに登録
-      - name: Add CodeCommit remote
-        run: |
-          git remote add codecommit \
-            https://git-codecommit.ap-northeast-1.amazonaws.com/v1/repos/my-app
-
-      # 5. GitHubのmainブランチをCodeCommitへ同期
-      - name: Push to CodeCommit
-        run: |
-          git push codecommit HEAD:refs/heads/main
+          # 全ブランチとタグをCodeCommitに強制プッシュ！
+          git push codecommit --all --force
+          git push codecommit --tags --force
