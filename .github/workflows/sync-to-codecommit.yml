@@ -1,0 +1,50 @@
+name: Sync GitHub to CodeCommit
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-24.04
+
+    env:
+      AWS_REGION: ap-northeast-1
+      CODECOMMIT_REPO_URL: https://git-codecommit.ap-northeast-1.amazonaws.com/v1/repos/your-codecommit-repo
+      TARGET_BRANCH: main
+
+    steps:
+      - name: Checkout GitHub repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Configure AWS credentials with OIDC
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          role-to-assume: arn:aws:iam::123456789012:role/github-actions-codecommit-sync
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Confirm AWS identity
+        run: aws sts get-caller-identity
+
+      - name: Configure Git credential helper for CodeCommit
+        run: |
+          git config --global credential.helper '!aws codecommit credential-helper $@'
+          git config --global credential.UseHttpPath true
+
+      - name: Register CodeCommit remote
+        run: |
+          git remote remove codecommit || true
+          git remote add codecommit "${CODECOMMIT_REPO_URL}"
+          git remote -v
+
+      - name: Push main branch to CodeCommit
+        run: |
+          git push codecommit "refs/heads/${TARGET_BRANCH}:refs/heads/${TARGET_BRANCH}"
