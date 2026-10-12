@@ -3,7 +3,7 @@ name: Sync GitHub to CodeCommit
 on:
   push:
     branches:
-      - main
+      - master
   workflow_dispatch:
 
 permissions:
@@ -16,8 +16,8 @@ jobs:
 
     env:
       AWS_REGION: ap-northeast-1
-      CODECOMMIT_REPO_URL: https://git-codecommit.ap-northeast-1.amazonaws.com/v1/repos/your-codecommit-repo
-      TARGET_BRANCH: main
+      CODECOMMIT_REPO_URL: https://git-codecommit.ap-northeast-1.amazonaws.com/v1/repos/my-app
+      TARGET_BRANCH: master
 
     steps:
       - name: Checkout GitHub repository
@@ -28,7 +28,7 @@ jobs:
       - name: Configure AWS credentials with OIDC
         uses: aws-actions/configure-aws-credentials@v6.3.0
         with:
-          role-to-assume: arn:aws:iam::123456789012:role/github-actions-codecommit-sync
+          role-to-assume: arn:aws:iam::679353609733:role/GitHubActionsCodeCommitSyncRole
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Confirm AWS identity
